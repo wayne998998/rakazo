@@ -6,6 +6,13 @@ export interface AdapterContext {
   spaceId: string;
   userId: string;
   botId?: string;
+  /**
+   * Identity that selects this caller's display on a shared computer. The
+   * screen is keyed by `screenId ?? botId`, so omitting it keeps the
+   * one-screen-per-bot behaviour while a distinct value gives a caller its own
+   * display on the same computer.
+   */
+  screenId?: string;
   runId?: string;
   /** Opaque fence for releasing a graphical screen without tearing down its replacement. */
   screenLeaseId?: string;
