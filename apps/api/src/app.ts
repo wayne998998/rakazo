@@ -88,6 +88,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import type { AppEnv } from "./env.js";
 import { loadEnv } from "./env.js";
+import { mountExternalComputerRoutes } from "./external-computers.js";
 import { mountLocalSettings } from "./local-settings.js";
 import {
   createMessagingInboundHandler,
@@ -535,6 +536,11 @@ export async function createApp(
     return actor;
   });
   mountWebhookHttpRoutes(app, { prisma, secrets, events, jobs });
+  mountExternalComputerRoutes(
+    app,
+    { sandbox, dataDir: env.dataDir, spaceId: env.externalComputerSpaceId ?? "" },
+    { token: env.externalComputerToken },
+  );
   // Shared with stop so a shutdown during retry delays does not restart polling.
   let messagingStopped = false;
   let clearMessagingRetryDelay: (() => void) | undefined;

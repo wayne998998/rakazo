@@ -89,6 +89,10 @@ export interface AppEnv {
   updaterUrl: string | undefined;
   /** Bearer shared with the updater; never sent to the browser. */
   updaterToken: string | undefined;
+  /** Service-account bearer for the external computer API; unset disables the surface. */
+  externalComputerToken: string | undefined;
+  /** Space that owns every computer created through the external computer API. */
+  externalComputerSpaceId: string | undefined;
   /** Current application image tag; used for compose manual-upgrade command selection. */
   imageTag: string | undefined;
 }
@@ -176,6 +180,8 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
     gitSha: optional(source.GIT_SHA) ?? optional(source.RAKAZO_GIT_SHA),
     updaterUrl,
     updaterToken,
+    externalComputerToken: optional(source.EXTERNAL_COMPUTER_TOKEN),
+    externalComputerSpaceId: optional(source.EXTERNAL_COMPUTER_SPACE_ID),
     imageTag: optional(source.RAKAZO_IMAGE_TAG),
   };
 }
