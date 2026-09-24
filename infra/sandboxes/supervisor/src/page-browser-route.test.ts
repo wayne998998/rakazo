@@ -55,6 +55,34 @@ async function snapshot(id: string, screen: string, lease: string, home = "home"
   });
 }
 
+it.each([
+  [{ command: "act", actions: [{ kind: "press", ref: "e1" }] }, "unknown action kind"],
+  [{ command: "act", actions: [{ kind: "fill", ref: "e1" }] }, "fill without text"],
+  [{ command: "act", actions: [] }, "empty action list"],
+  [{ command: "scroll" }, "unknown command"],
+])("answers 400, not 500, for %j", async (payload, _label) => {
+  // A caller that sends a malformed action must be told what to correct. This
+  // returned 500 before the schema was checked ahead of the try block, which
+  // reads as a server fault and hides the offending field.
+  const response = await supervisorApp.request("/computers/computer-invalid/browser", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${resolveSupervisorToken(process.env)}`,
+      "content-type": "application/json",
+      "x-rakazo-bot-id": "home",
+      "x-rakazo-space-id": "space",
+      "x-rakazo-screen-id": "screen",
+      "x-rakazo-screen-lease-id": "run:1",
+    },
+    body: JSON.stringify(payload),
+  });
+  expect(response.status).toBe(400);
+  const { error } = (await response.json()) as { error: string };
+  expect(error).toBeTruthy();
+  // Never touch the container for a request that cannot be honoured.
+  expect(mock.exec).not.toHaveBeenCalled();
+});
+
 it("resolves the owned display and refuses an older fence before running the helper", async () => {
   expect(await (await snapshot("computer-lease", "first", "run:2")).json()).toMatchObject({
     ok: true,

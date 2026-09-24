@@ -377,7 +377,17 @@ app.post("/computers/:id/browser", async (c) => {
           .max(24),
       }),
     ])
-    .parse(await c.req.json());
+    // A malformed action is caller error, like every other route here: answer
+    // 400 with the shape that was expected. Letting this throw would surface as
+    // a 500, which reads as a server fault and hides what to correct.
+    .safeParse(await c.req.json());
+  if (!body.success) {
+    const issue = body.error.issues[0];
+    const path = issue?.path.join(".");
+    const detail = issue ? `${issue.message}${path ? ` (at ${path})` : ""}` : "invalid request";
+    return c.json({ error: detail }, 400);
+  }
+  const input = body.data;
   try {
     const { container, layout } = await managedScreen(
       c.req.param("id"),
@@ -388,7 +398,7 @@ app.post("/computers/:id/browser", async (c) => {
     );
     const result = await runContainerCommand(
       container,
-      ["/usr/local/bin/rakazo-page-browser", body.command, JSON.stringify(body)],
+      ["/usr/local/bin/rakazo-page-browser", input.command, JSON.stringify(input)],
       {
         env: [
           `DISPLAY=${layout.display}`,
@@ -409,7 +419,7 @@ app.post("/computers/:id/browser", async (c) => {
     return c.json({
       ok: false,
       fallback: "computer_act",
-      uncertain: body.command === "act",
+      uncertain: input.command === "act",
       error: "Page browser unavailable or interrupted. Inspect the screen before continuing.",
     });
   }
