@@ -305,6 +305,29 @@ describe("external computer routes", () => {
     expect(await gateway.json()).toEqual({ error: "supervisor unreachable: connect ECONNREFUSED" });
   });
 
+  it("keeps a provider's own 4xx instead of reporting 502", async () => {
+    // A rejected request is the caller's to fix. Reporting 502 told the caller
+    // the server had faulted and dropped the detail naming the offending field.
+    const rejected = fakeProvider({
+      pageBrowser: vi.fn(async () => {
+        const error = new Error(
+          "page browser failed: {\"error\":\"Invalid discriminator value. Expected 'click' | 'fill' | 'type' (at actions.0.kind)\"}",
+        );
+        throw Object.assign(error, { status: 400 });
+      }) as unknown as SandboxProvider["pageBrowser"],
+    });
+    const response = await app(rejected.provider).request(
+      "/api/v1/external/computers/container-1/browser",
+      {
+        method: "POST",
+        headers: { authorization: `Bearer ${TOKEN}`, "x-rakazo-bot-id": "dsh-abc123" },
+        body: JSON.stringify({ command: "act", actions: [{ kind: "press", ref: "e1" }] }),
+      },
+    );
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toMatch(/actions\.0\.kind/);
+  });
+
   it("threads a valid screen id into the provider context over HTTP", async () => {
     const { provider, calls } = fakeProvider();
     const instance = app(provider);

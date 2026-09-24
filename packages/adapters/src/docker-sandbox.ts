@@ -216,7 +216,15 @@ export class DockerSandboxProvider implements SandboxProvider {
       redirect: "error",
       signal: context.signal,
     });
-    if (!res.ok) throw new Error(`page browser failed: ${res.status}`);
+    if (!res.ok) {
+      // Keep the supervisor's status and detail: it names the offending field
+      // (for example "invalid actions.0.kind: ..."). Collapsing this to a bare
+      // status turns a caller error into an opaque server fault upstream.
+      const detail = await safeBody(res, context.signal);
+      throw Object.assign(new Error(detail ? `page browser failed: ${detail}` : `page browser failed: ${res.status}`), {
+        status: res.status,
+      });
+    }
     return readSandboxJson<PageBrowserResult>(res, context.signal, 512 * 1024);
   }
 

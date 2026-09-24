@@ -303,7 +303,15 @@ export function mountExternalComputerRoutes(
       logger.warn("external computer request failed", { "external.error": message });
       // A provider reports a missing container as an error whose message carries
       // its own 404. Callers need that as a status, so it is normalized here.
-      const status: ExternalStatus = /\b404\b|not found/i.test(message) ? 404 : 502;
+      // A provider that reports its own status keeps it: a rejected request is
+      // the caller's to fix, and must not read as a server fault.
+      const reported = (error as { status?: unknown } | null)?.status;
+      const status: ExternalStatus =
+        typeof reported === "number" && reported >= 400 && reported < 500
+          ? (reported as ExternalStatus)
+          : /\b404\b|not found/i.test(message)
+            ? 404
+            : 502;
       return c.json({ error: message }, status);
     }
   };
